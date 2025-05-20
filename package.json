@@ -1,0 +1,22 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "\"Backend for E-freshcart Project\"",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "\"Online",
+    "Shoping",
+    "E-commerce",
+    "E-cart",
+    "online",
+    "grocery\""
+  ],
+  "author": "Arjun Singh",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
