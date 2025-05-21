@@ -1,5 +1,5 @@
 import e from "express";
-import { singup } from "../../../controllers/userrControllers.js";
+import { signin, singup } from "../../../controllers/userrControllers.js";
 
 const router = e.Router();
 router.get("/home", (req, res) => {
@@ -7,4 +7,5 @@ router.get("/home", (req, res) => {
 });
 
 router.route("/signup").post(singup);
+router.route("/login").post(signin);
 export default router;
