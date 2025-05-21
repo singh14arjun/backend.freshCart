@@ -1,4 +1,6 @@
 import User from "../models/user.models.js";
+import Token from "../models/tokem.models.js";
+import { cookieOptions } from "../constant/helper.constants.js";
 
 export const singup = async (req, res, next) => {
   try {
@@ -63,16 +65,39 @@ export const signin = async (req, res, next) => {
         message: "Invalid Email / Password",
       });
     }
+    // Create Season for Singin
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
 
-    return res.status(200).json({
-      message: `Welcome Mr/Mrs : ${user.firstName}`,
-      user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-      },
-    });
+    const token = await Token.findOne({ user: user._id });
+    if (token) {
+      token.refreshToken = {
+        token: refreshToken,
+        createdAt: Date.now(),
+      };
+    } else {
+      await Token.create({
+        user: user._id,
+        refreshToken: {
+          token: refreshToken,
+          createdAt: Date.now(),
+        },
+      });
+    }
+
+    return res
+      .cookie("accessToken", accessToken, cookieOptions)
+      .cookie("refreshToken", refreshToken, cookieOptions)
+      .status(200)
+      .json({
+        message: `Welcome Mr/Mrs : ${user.firstName}`,
+        user: {
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+        },
+      });
   } catch (error) {
     console.log(error);
     next(error);
