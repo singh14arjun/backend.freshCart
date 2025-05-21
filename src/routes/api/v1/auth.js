@@ -1,5 +1,10 @@
 import e from "express";
-import { signin, singup } from "../../../controllers/userrControllers.js";
+import {
+  signin,
+  signout,
+  singup,
+} from "../../../controllers/userrControllers.js";
+import isAuthenticated from "../../../middlewares/auth.middlewares.js";
 
 const router = e.Router();
 router.get("/home", (req, res) => {
@@ -8,4 +13,6 @@ router.get("/home", (req, res) => {
 
 router.route("/signup").post(singup);
 router.route("/login").post(signin);
+router.route("/signout").get(isAuthenticated, signout);
+
 export default router;

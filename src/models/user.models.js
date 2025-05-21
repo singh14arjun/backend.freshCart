@@ -49,9 +49,9 @@ userSchema.methods.generateAccessToken = async function () {
       _id: this._id,
       email: this.email,
     },
-    "jhdfjhdsd",
+    process.env.JWT_ACCESS_TOKEN_SECRET,
     {
-      expiresIn: "1d",
+      expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY,
     }
   );
 };
@@ -61,9 +61,9 @@ userSchema.methods.generateRefreshToken = async function () {
       _id: this._id,
       email: this.email,
     },
-    "jhdfjhdsd",
+    process.env.JWT_ACCESS_REFRESH_SECRET,
     {
-      expiresIn: "1d",
+      expiresIn: process.env.JWT_ACCESS_REFRESH_EXPIRY,
     }
   );
 };

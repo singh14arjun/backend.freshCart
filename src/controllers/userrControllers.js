@@ -96,6 +96,7 @@ export const signin = async (req, res, next) => {
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
+          password: user.password,
         },
       });
   } catch (error) {
@@ -103,20 +104,41 @@ export const signin = async (req, res, next) => {
     next(error);
   }
 };
+
+// signout or logout
 export const signout = async (req, res, next) => {
   try {
+    const user = req.user;
+    const token = await Token.findOne({ user: user._id });
+
+    token.refreshToken = {
+      token: "",
+      createdAt: "",
+    };
+
+    await token.save();
+    return res
+      .clearCookie("accessToken")
+      .clearCookie("refreshToken")
+      .status(200)
+      .json({
+        message: "User signed-out successfully",
+      });
   } catch (error) {
     console.log(error);
     next(error);
   }
 };
-export const forgetPasswor = async (req, res, next) => {
+
+// forgetPassword
+export const forgetPassword = async (req, res, next) => {
   try {
   } catch (error) {
     console.log(error);
     next(error);
   }
 };
+// changePassword
 export const changePassword = async (req, res, next) => {
   try {
   } catch (error) {
@@ -124,6 +146,7 @@ export const changePassword = async (req, res, next) => {
     next(error);
   }
 };
+// emailVerification
 export const emailVerification = async (req, res, next) => {
   try {
   } catch (error) {
@@ -131,6 +154,7 @@ export const emailVerification = async (req, res, next) => {
     next(error);
   }
 };
+// tfa
 export const tfa = async (req, res, next) => {
   try {
   } catch (error) {

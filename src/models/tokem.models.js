@@ -8,6 +8,12 @@ const tokenSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+
+    refreshToken: {
+      token: String,
+      createdAt: Date,
+    },
+
     emailVerificatonToken: {
       token: String,
       createdAt: Date,

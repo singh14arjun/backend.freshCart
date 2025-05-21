@@ -1,12 +1,13 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
 import router from "./routes/index.routes.js";
 import app from "./app.js";
 import connectToDatabase from "./config/database.config.js";
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 
-dotenv.config();
 app.use("/", router);
 
 connectToDatabase()
@@ -20,6 +21,6 @@ connectToDatabase()
     });
   })
   .catch((error) => {
-    console.log("ERROR : Connecting to Databse - mOngoDB");
+    console.log("ERROR : Connecting to Database - MongoDB");
     process.exit(1);
   });
