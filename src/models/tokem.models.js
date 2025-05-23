@@ -22,9 +22,10 @@ const tokenSchema = new mongoose.Schema(
       token: String,
       createdAt: Date,
     },
-    forgetPassword: {
+    forgetPasswordToken: {
       token: String,
       createdAt: Date,
+      tokenVerified: Boolean,
     },
   },
   {

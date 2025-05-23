@@ -1,6 +1,10 @@
 import User from "../models/user.models.js";
 import Token from "../models/tokem.models.js";
 import { cookieOptions } from "../constant/helper.constants.js";
+import { sendEmail } from "../handlers/email.handlers.js";
+import { sendEmailVerification } from "../handlers/email.handlers.js";
+import { sendOTP } from "../handlers/otp.handlers.js";
+import generateOTP from "../utils/generateOTP.js";
 
 export const singup = async (req, res, next) => {
   try {
@@ -30,11 +34,20 @@ export const singup = async (req, res, next) => {
       password,
     });
 
+    // sending to welcome message to new user
+
+    const emailResponse = await sendEmail(
+      user.email,
+      "Welcome to FreshCart!",
+      `<h1>Welcome Mr/Mrs ${user.firstName}</h1>`
+    );
+
     return res.status(201).json({
       message: "User Created Successfully!",
       user: {
         _id: user._id,
         firstName: user.firstName,
+        emailResponse,
       },
     });
   } catch (error) {
@@ -43,6 +56,7 @@ export const singup = async (req, res, next) => {
   }
 };
 
+// signin
 export const signin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -91,6 +105,7 @@ export const signin = async (req, res, next) => {
       .status(200)
       .json({
         message: `Welcome Mr/Mrs : ${user.firstName}`,
+
         user: {
           _id: user._id,
           firstName: user.firstName,
@@ -146,14 +161,141 @@ export const changePassword = async (req, res, next) => {
     next(error);
   }
 };
-// emailVerification
-export const emailVerification = async (req, res, next) => {
+
+// send forget password otp to email
+export const generateForgetPasswordToken = async (req, res, next) => {
   try {
+    const { email } = req.body;
+
+    if (!email?.trim()) {
+      return res.status(403).json({
+        message: "Email fields are required!",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    console.log(user.email);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const token = await Token.findOne({ user: user._id });
+
+    const otpToken = await generateOTP(6);
+
+    // passing required value to forgetPasswordtoken
+    token.forgetPasswordToken = {
+      token: otpToken,
+      createdAt: Date.now(),
+      tokenVerified: false,
+    };
+
+    // save the token
+    await token.save();
+
+    console.log("OTP IS : ", otpToken);
+
+    const otpResponse = await sendOTP(
+      user.email,
+      "Welcome to FreshCart!",
+      `<h1>Welcome Mr/Mrs ${user.firstName}</h1> <h2>Your OTP Is : ${otpToken}</h2>`
+    );
+
+    return res.status(200).json({
+      message: "OTP Send to Your E-Mail",
+      otpResponse,
+    });
   } catch (error) {
     console.log(error);
     next(error);
   }
 };
+
+// verify otp for forgetPassword
+
+export const verifyOTPForgetPassword = async (req, res, next) => {
+  const { email, otp } = req.body;
+
+  if (!email?.trim() || !otp?.trim()) {
+    return res.status(403).json({
+      message: "All fields are required!",
+    });
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({
+      message: "User Not found!",
+    });
+  }
+
+  const token = await Token.findOne({ user: user._id });
+
+  const createdAt = new Date(Number(token.createdAt) + 900000);
+  const currentTime = new Date(Date.now());
+
+  if (currentTime > createdAt) {
+    return res.status(403).json({
+      message: "OTP expired . Please regenearte!",
+    });
+  }
+
+  if (token.forgetPasswordToken.token?.toString() !== otp?.toString()) {
+    return res.status(403).json({
+      message: "Invalid OTP ! Verification failed",
+    });
+  }
+
+  token.forgetPasswordToken = {
+    token: "",
+    createdAt: "",
+    tokenVerified: true,
+  };
+
+  await token.save();
+
+  return res.status(200).json({
+    message: "OTP verification Successful !",
+  });
+};
+
+// emailVerification
+export const emailVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found!",
+      });
+    }
+    console.log(`Email : ${user.email}`);
+
+    let letter =
+      "ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmonpqrstuvwxyz#$0123456789";
+    let captcha = "";
+    for (let i = 0; i < 8; i++) {
+      let randomIndex = Math.floor(Math.random() * letter.length);
+      captcha += letter[randomIndex];
+    }
+
+    console.log(captcha);
+
+    const emailVerificationRequest = await sendEmailVerification(
+      user.email,
+      "Welcome to FreshCart",
+      `<h1 style="color: red;">Welcome Mr/Mrs </h1>Welcome Mr/Mrs ${user.firstName} <h2>Your email verification captcha is : ${captcha}</h2>`
+    );
+    return res.status(200).json({
+      message: "Capatcha send to Your e-mail",
+      emailVerificationRequest,
+    });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
 // tfa
 export const tfa = async (req, res, next) => {
   try {
