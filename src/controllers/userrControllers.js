@@ -1,5 +1,5 @@
 import User from "../models/user.models.js";
-import Token from "../models/tokem.models.js";
+import Token from "../models/token.models.js";
 import { cookieOptions } from "../constant/helper.constants.js";
 import { sendEmail } from "../handlers/email.handlers.js";
 import { sendEmailVerification } from "../handlers/email.handlers.js";
@@ -153,14 +153,6 @@ export const forgetPassword = async (req, res, next) => {
     next(error);
   }
 };
-// changePassword
-export const changePassword = async (req, res, next) => {
-  try {
-  } catch (error) {
-    console.log(error);
-    next(error);
-  }
-};
 
 // send forget password otp to email
 export const generateForgetPasswordToken = async (req, res, next) => {
@@ -194,15 +186,15 @@ export const generateForgetPasswordToken = async (req, res, next) => {
 
     console.log("OTP IS : ", otpToken);
 
-    const otpResponse = await sendOTP(
+    await sendOTP(
       user.email,
-      "Welcome to FreshCart!",
-      `<h1>Welcome Mr/Mrs ${user.firstName}</h1> <h2>Your OTP Is : ${otpToken}</h2>`
+      "OTP For Forget Password!",
+      `<h1>Dear , ${user.firstName}</h1> <h2>Your OTP Is : ${otpToken}</h2>`
     );
 
     return res.status(200).json({
       message: "OTP Send to Your E-Mail",
-      otpResponse,
+      // otpResponse,
     });
   } catch (error) {
     console.log(error);
@@ -230,8 +222,13 @@ export const verifyOTPForgetPassword = async (req, res, next) => {
 
   const token = await Token.findOne({ user: user._id });
 
-  const createdAt = new Date(Number(token.createdAt) + 900000);
+  const createdAt = new Date(
+    Number(token.forgetPasswordToken.createdAt) + 900000
+  );
   const currentTime = new Date(Date.now());
+
+  console.log(createdAt);
+  console.log(currentTime);
 
   if (currentTime > createdAt) {
     return res.status(403).json({
@@ -258,10 +255,60 @@ export const verifyOTPForgetPassword = async (req, res, next) => {
   });
 };
 
-// emailVerification
-export const emailVerification = async (req, res, next) => {
+// changePassword
+export const changePassword = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    if (!email?.trim() || !password?.trim) {
+      return res.status(403).json({
+        message: "All fields are required!",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        message: "User Not Found /Invalid User",
+      });
+    }
+
+    const token = await Token.findOne({ user: user._id });
+
+    if (!token.forgetPasswordToken.tokenVerified) {
+      return res.status(401).json({
+        message: "Access Denied due to Unauthorized access detected",
+      });
+    }
+
+    user.password = password;
+    await user.save();
+
+    token.forgetPasswordToken = {
+      token: "",
+      createdAt: "",
+      tokenVerified: false,
+    };
+    await token.save();
+
+    return res.status(200).json({
+      message: "Password changed succesfully !",
+    });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
+// generating email Verification token
+export const generateEmailVerificationToken = async (req, res, next) => {
   try {
     const { email } = req.body;
+
+    if (!email?.trim()) {
+      return res.status(403).json({
+        message: "All files are required.",
+      });
+    }
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -269,26 +316,85 @@ export const emailVerification = async (req, res, next) => {
         message: "User not found!",
       });
     }
-    console.log(`Email : ${user.email}`);
 
-    let letter =
-      "ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmonpqrstuvwxyz#$0123456789";
-    let captcha = "";
-    for (let i = 0; i < 8; i++) {
-      let randomIndex = Math.floor(Math.random() * letter.length);
-      captcha += letter[randomIndex];
-    }
-
-    console.log(captcha);
+    const token = await Token.findOne({ user: user._id });
+    const otpToken = await generateOTP(6);
 
     const emailVerificationRequest = await sendEmailVerification(
       user.email,
-      "Welcome to FreshCart",
-      `<h1 style="color: red;">Welcome Mr/Mrs </h1>Welcome Mr/Mrs ${user.firstName} <h2>Your email verification captcha is : ${captcha}</h2>`
+      "Email Verification OTP ",
+      `<h2 style="color: red;">Your email verification Code is : ${otpToken}</h2>`
     );
+
+    token.emailVerificatonToken = {
+      token: otpToken,
+      createdAt: Date.now(),
+      tokenVerified: false,
+    };
+
+    await token.save();
     return res.status(200).json({
       message: "Capatcha send to Your e-mail",
       emailVerificationRequest,
+    });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
+// email verification via otp
+export const emailVerification = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email?.trim() || !otp?.trim()) {
+      return res.status(403).json({
+        message: "All fields are required!",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        message: "User Not found!",
+      });
+    }
+
+    const token = await Token.findOne({ user: user._id });
+
+    const createdAt = new Date(
+      Number(token.emailVerificatonToken.createdAt) + 900000
+    );
+
+    const currentTime = new Date(Date.now());
+
+    if (currentTime > createdAt) {
+      token.emailVerificatonToken = {
+        token: "",
+        createdAt: "",
+        tokenVerified: true,
+      };
+      await token.save();
+      return res.status(403).json({
+        message: "OTP Expired Try Again",
+      });
+    }
+
+    if (token.emailVerificatonToken.token?.toString() !== otp.toString()) {
+      return res.status(403).json({
+        message: "OTP verification failed!",
+      });
+    }
+
+    token.emailVerificatonToken = {
+      token: "",
+      createdAt: "",
+      tokenVerified: true,
+    };
+    await token.save();
+
+    return res.status(200).json({
+      message: "OTP Verificaton successfull!",
     });
   } catch (error) {
     console.log(error);
